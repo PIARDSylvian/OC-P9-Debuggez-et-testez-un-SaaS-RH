@@ -2,12 +2,13 @@
  * @jest-environment jsdom
  */
 
-import { fireEvent, screen } from "@testing-library/dom"
+import { fireEvent, screen, waitFor } from "@testing-library/dom"
 import NewBillUI from "../views/NewBillUI.js"
 import NewBill from "../containers/NewBill.js"
 import {localStorageMock} from "../__mocks__/localStorage.js"
-import { ROUTES } from "../constants/routes"
+import { ROUTES, ROUTES_PATH } from "../constants/routes"
 import mockStore from "../__mocks__/store"
+import router from "../app/Router"
 
 jest.mock("../app/store", () => mockStore)
 
@@ -18,6 +19,10 @@ describe("Given I am connected as an employee", () => {
       document.body.innerHTML = html
       Object.defineProperty(window, 'localStorage', { value: localStorageMock })
       window.localStorage.setItem('user', JSON.stringify({ type: 'Employee' }))
+    })
+
+    afterEach(() => {
+      document.body.innerHTML = '';
     })
 
     test("Then I submit a empty form", () => {
@@ -159,37 +164,130 @@ describe("Given I am connected as an employee", () => {
 // test d'intégration POST
 describe("Given I am a user connected as employee", () => {
   describe("When I navigate to NewBills", () => {
-    test("bills from mock API GET", async () => {
-      const createBills = await mockStore.bills().create()
-      expect(createBills.fileUrl).toBe("https://localhost:3456/images/test.jpg")
-    })
-  describe("When an error occurs on API", () => {
     beforeEach(() => {
       jest.spyOn(mockStore, "bills")
+      console.error = jest.fn()
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: "a@a"
+      }))
+      const root = document.createElement("div")
+      root.setAttribute("id", "root")
+      document.body.appendChild(root)
+      router()
     })
-    test("bills from an API and fails with 404 message error", async () => {
-        mockStore.bills.mockImplementationOnce(() => {
-          return {
-            create : () =>  {
-              return Promise.resolve(new Error("Erreur 404"))
-            }
-          }
-        })
-        const createBills = await mockStore.bills().create()
-        expect(createBills.message).toBe("Erreur 404");
-    })
-    test("bills from an API and fails with 500 message error", async () => {
-      mockStore.bills.mockImplementationOnce(() => {
+    test("bills from mock API POST with name of bill : new bill", async () => {
+      let list = [];
+      mockStore.bills.mockImplementation(() => {
         return {
-          create : () =>  {
-            return Promise.resolve(new Error("Erreur 500"))
-          }
+          update : (newBill) => { return new Promise(() => {
+            const data = JSON.parse(newBill.data)
+            list.push({...data})
+          })},
+          list : () => { return Promise.resolve(list)},
+          create : () =>  { return new Promise(() => {
+            return {fileUrl: 'https://localhost:3456/images/test.jpg', key: '1234'}
+          })},
         }
       })
-      const createBills = await mockStore.bills().create()
-      expect(createBills.message).toBe("Erreur 500");
+      window.onNavigate(ROUTES_PATH.NewBill)
+      await waitFor(() => screen.getByText("Envoyer une note de frais"))
+      const form = screen.getByTestId('form-new-bill')
+      const name = screen.getByTestId('expense-name')
+      const datepicker = screen.getByTestId('datepicker')
+      const amount = screen.getByTestId('amount')
+      const pct = screen.getByTestId('pct')
+      const file = screen.getByTestId('file')
+      datepicker.value = "2023-01-06"
+      amount.value = "100"
+      pct.value = "10"
+      name.value = "new bill"
+      const event = {
+        target: {
+          files: [{
+            name: 'image.png',
+            size: 50000,
+            type: 'image/png',
+          },]
+        },
+      }
+      fireEvent.change(file, event)
+      fireEvent.submit(form)
+      await waitFor(() => screen.getByText("Mes notes de frais"))
+      const createBills = screen.getByText('new bill')
+      expect(createBills).toBeTruthy()
     })
-  })
-
+    describe("When an error occurs on API", () => {
+      test("bills from an API and fails with 404 message error", async () => {
+        let list = [];
+        mockStore.bills.mockImplementation(() => {
+          return {
+            list : () => { return Promise.resolve(list)},
+            create : () =>  { return Promise.reject(new Error("Erreur 404"))},
+            update : () =>  { return Promise.reject(new Error("Erreur 404"))}
+          }
+        })
+        window.onNavigate(ROUTES_PATH.NewBill)
+        await waitFor(() => screen.getByText("Envoyer une note de frais"))
+        const form = screen.getByTestId('form-new-bill')
+        const name = screen.getByTestId('expense-name')
+        const datepicker = screen.getByTestId('datepicker')
+        const amount = screen.getByTestId('amount')
+        const pct = screen.getByTestId('pct')
+        const file = screen.getByTestId('file')
+        datepicker.value = "2023-01-06"
+        amount.value = "100"
+        pct.value = "10"
+        name.value = "new bill"
+        const event = {
+          target: {
+            files: [{
+              name: 'image.png',
+              size: 50000,
+              type: 'image/png',
+            },]
+          },
+        }
+        fireEvent.change(file, event)
+        fireEvent.submit(form)
+        await new Promise(process.nextTick);
+        expect(console.error).toHaveBeenCalledWith(new Error("Erreur 404"));
+      })
+      test("bills from an API and fails with 500 message error", async () => {
+        let list = [];
+        mockStore.bills.mockImplementation(() => {
+          return {
+            list : () => { return Promise.resolve(list)},
+            create : () =>  { return Promise.reject(new Error("Erreur 500"))},
+            update : () =>  { return Promise.reject(new Error("Erreur 500"))}
+          }
+        })
+        window.onNavigate(ROUTES_PATH.NewBill)
+        await waitFor(() => screen.getByText("Envoyer une note de frais"))
+        const form = screen.getByTestId('form-new-bill')
+        const name = screen.getByTestId('expense-name')
+        const datepicker = screen.getByTestId('datepicker')
+        const amount = screen.getByTestId('amount')
+        const pct = screen.getByTestId('pct')
+        const file = screen.getByTestId('file')
+        datepicker.value = "2023-01-06"
+        amount.value = "100"
+        pct.value = "10"
+        name.value = "new bill"
+        const event = {
+          target: {
+            files: [{
+              name: 'image.png',
+              size: 50000,
+              type: 'image/png',
+            },]
+          },
+        }
+        fireEvent.change(file, event)
+        fireEvent.submit(form)
+        await new Promise(process.nextTick);
+        expect(console.error).toHaveBeenCalledWith(new Error("Erreur 500"));
+      })
+    })
   })
 })
