@@ -21,8 +21,10 @@ export default class NewBill {
     const file = fileInput.files[0]
 
     const validExtensions = ['jpg', 'jpeg', 'png'];
+    if (fileInput.files.length === 0) return false;
     if (!validExtensions.includes(file.name.split('.').pop())) {
       fileInput.value = ''; 
+      fileInput.files = [];
       return false;
     };
 
