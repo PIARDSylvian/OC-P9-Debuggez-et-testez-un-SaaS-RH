@@ -24,6 +24,7 @@ export default class NewBill {
     if (fileInput.files.length === 0) return false;
     if (!validExtensions.includes(file.name.split('.').pop())) {
       fileInput.setCustomValidity('Format de fichier invalide, Format autorisé jpg, jpeg, png');
+      try { fileInput.files = []; } catch (error) { }
       return false;
     };
 
