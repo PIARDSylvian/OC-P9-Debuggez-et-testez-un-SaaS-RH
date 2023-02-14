@@ -23,8 +23,7 @@ export default class NewBill {
     const validExtensions = ['jpg', 'jpeg', 'png'];
     if (fileInput.files.length === 0) return false;
     if (!validExtensions.includes(file.name.split('.').pop())) {
-      fileInput.value = ''; 
-      fileInput.files = [];
+      fileInput.setCustomValidity('Format de fichier invalide, Format autorisé jpg, jpeg, png');
       return false;
     };
 
