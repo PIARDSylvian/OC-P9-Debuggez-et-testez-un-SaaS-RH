@@ -26,6 +26,8 @@ export default class NewBill {
       fileInput.setCustomValidity('Format de fichier invalide, Format autorisé jpg, jpeg, png');
       try { fileInput.files = []; } catch (error) { }
       return false;
+    } else {
+      fileInput.setCustomValidity('');
     };
 
     const filePath = e.target.value.split(/\\/g)
